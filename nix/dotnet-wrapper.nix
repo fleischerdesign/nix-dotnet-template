@@ -18,11 +18,14 @@ pkgs.writeShellScriptBin "dotnet" ''
     fi
 
     if [ "$IS_WINDOWS_APP" -eq 1 ]; then
-      echo -e "\033[1;33m[NixOS Windows-Desktop] Building project for win-x64 via Linux .NET 10 SDK...\033[0m"
-      $REAL_DOTNET build -r win-x64 -p:EnableWindowsTargeting=true "''${@:2}" || exit $?
+      echo -e "\033[1;33m[NixOS Windows-Desktop] Building self-contained win-x64 project via Linux .NET 10 SDK...\033[0m"
+      $REAL_DOTNET build -r win-x64 --self-contained true -p:EnableWindowsTargeting=true "''${@:2}" || exit $?
 
-      # Find compiled executable
-      EXE_PATH=$(find bin/ -type f -name "*.exe" 2>/dev/null | head -n 1)
+      # Prefer self-contained executable under win-x64/
+      EXE_PATH=$(find bin/ -type f -path "*/win-x64/*.exe" 2>/dev/null | head -n 1)
+      if [ -z "$EXE_PATH" ]; then
+        EXE_PATH=$(find bin/ -type f -name "*.exe" 2>/dev/null | head -n 1)
+      fi
 
       if [ -z "$EXE_PATH" ]; then
         echo -e "\033[1;31m[NixOS Windows Error] No compiled .exe binary found in bin/\033[0m"
