@@ -1,11 +1,11 @@
 # .NET Flake Template
 
-A reproducible, modern .NET 10 development environment with native WPF support on NixOS.
+A reproducible, modern .NET 10 development environment with native Windows (WPF, WinForms) support on NixOS.
 
 ## Features
 
 - **.NET 10 SDK & Tooling**: Pre-configured with `.NET 10`, `csharp-ls` (Roslyn LSP), `netcoredbg`, `csharpier`, and `nuget`.
-- **NixOS WPF Support (`devShells.wpf`)**: Transparently builds WPF (`net10.0-windows`) on Linux via Roslyn and launches the GUI app automatically in an isolated Wine environment (`.direnv/wine`).
+- **NixOS Native Windows Support (`devShells.windows`)**: Transparently builds Windows apps (`net10.0-windows`, WPF, WinForms) on Linux via Roslyn and launches the GUI app automatically in an isolated Wine environment (`.direnv/wine`).
 - **Transparent `dotnet` CLI**: No proprietary aliases to learn. Standard commands (`dotnet build`, `dotnet run`, `dotnet test`) work as expected out-of-the-box.
 - **SOLID & DRY Design**: Clean separation of Flake declarations, modular environment building, transparent CLI wrapping, and Wine sandbox management.
 
@@ -17,7 +17,7 @@ A reproducible, modern .NET 10 development environment with native WPF support o
 # Initialize a new standard .NET project
 nix flake init -t github:fleischerdesign/nix-dotnet-template
 
-# Enter the devshell (or use direnv)
+# Enter the devshell (or use direnv: 'use flake')
 nix develop
 
 # Standard workflow
@@ -25,16 +25,16 @@ dotnet new console
 dotnet run
 ```
 
-### 2. WPF Windows Desktop Development on NixOS
+### 2. Native Windows Desktop Development (WPF, WinForms) on NixOS
 
 ```bash
-# Initialize WPF environment
-nix flake init -t github:fleischerdesign/nix-dotnet-template#wpf
+# Initialize Windows Desktop environment
+nix flake init -t github:fleischerdesign/nix-dotnet-template#windows
 
-# Enter WPF devshell
-nix develop .#wpf
+# Enter Windows devshell (or use direnv: 'use flake .#windows')
+nix develop .#windows
 
-# Run your WPF application (compiles on NixOS, launches GUI via Wine)
+# Run your Windows Desktop application (compiles on NixOS, launches GUI via Wine)
 dotnet run
 ```
 
@@ -42,7 +42,7 @@ dotnet run
 
 ```
 nix-dotnet-template/
-├── flake.nix             # Flake entrypoint exposing default and WPF devShells
+├── flake.nix             # Flake entrypoint exposing default and windows devShells
 ├── nix/
 │   ├── builder.nix       # DRY devShell constructor
 │   ├── dotnet-wrapper.nix# Transparent dotnet CLI wrapper script

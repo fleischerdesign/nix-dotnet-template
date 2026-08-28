@@ -1,5 +1,5 @@
 {
-  description = "A reproducible .NET 10 development environment with modern tooling and native WPF support.";
+  description = "A reproducible .NET 10 development environment with modern tooling and native Windows (WPF/WinForms) support.";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
@@ -18,9 +18,9 @@
           path = ./.;
           description = "A reproducible .NET 10 cross-platform development environment";
         };
-        wpf = {
+        windows = {
           path = ./.;
-          description = "A reproducible .NET 10 WPF development environment with NixOS Wine runner";
+          description = "A reproducible .NET 10 native Windows (WPF/WinForms) development environment with NixOS Wine runner";
         };
       };
     }
@@ -34,12 +34,12 @@
         devShells = {
           default = builder.mkDotnetShell {
             sdkVersion = "sdk_10_0";
-            enableWpf = false;
+            enableWindows = false;
           };
 
-          wpf = builder.mkDotnetShell {
+          windows = builder.mkDotnetShell {
             sdkVersion = "sdk_10_0";
-            enableWpf = true;
+            enableWindows = true;
           };
         };
 
