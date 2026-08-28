@@ -27,6 +27,7 @@
       DOTNET_ROOT = "${dotnetSdk}";
       DOTNET_CLI_TELEMETRY_OPTOUT = "1";
       DOTNET_NOLOGO = "1";
+      EnableWindowsTargeting = if enableWindows then "true" else "false";
 
       shellHook = ''
         echo -e "\033[1;34m=== .NET 10 Development Environment ===\033[0m"

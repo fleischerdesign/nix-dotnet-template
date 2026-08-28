@@ -19,7 +19,7 @@ pkgs.writeShellScriptBin "dotnet" ''
 
     if [ "$IS_WINDOWS_APP" -eq 1 ]; then
       echo -e "\033[1;33m[NixOS Windows-Desktop] Building project via Linux .NET 10 SDK...\033[0m"
-      $REAL_DOTNET build "''${@:2}" || exit $?
+      $REAL_DOTNET build -p:EnableWindowsTargeting=true "''${@:2}" || exit $?
 
       # Find compiled executable
       EXE_PATH=$(find bin/ -type f -name "*.exe" 2>/dev/null | head -n 1)
