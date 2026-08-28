@@ -1,0 +1,20 @@
+# Build outputs
+[Bb]in/
+[Oo]bj/
+out/
+
+# Visual Studio / Rider / IDEs
+.vs/
+.idea/
+*.user
+*.userosscache
+*.sln.docstates
+*.suo
+
+# Nix & direnv
+.direnv/
+result
+result-*
+
+# User/Local test artifacts
+*.log
