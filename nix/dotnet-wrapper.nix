@@ -54,12 +54,10 @@ pkgs.writeShellScriptBin "dotnet" ''
           ;;
         --project|-p)
           PROJECT_ARG="$2"
-          RUN_FLAGS+=("$1" "$2")
           shift 2
           ;;
         --project=*)
           PROJECT_ARG="''${1#*=}"
-          RUN_FLAGS+=("$1")
           shift
           ;;
         *)
