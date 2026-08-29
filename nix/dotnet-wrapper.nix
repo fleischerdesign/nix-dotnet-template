@@ -116,7 +116,7 @@ pkgs.writeShellScriptBin "dotnet" ''
       REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")"
       export WINEPREFIX="''${WINEPREFIX:-$REPO_ROOT/.direnv/wine}"
       export WINEDEBUG="-all"
-      export WINEDLLOVERRIDES="mscoree,mshtml="
+      export FONTCONFIG_FILE="${pkgs.fontconfig.out}/etc/fonts/fonts.conf"
       export DXVK_STATE_CACHE_PATH="$WINEPREFIX"
       export DXVK_LOG_LEVEL="none"
       unset DOTNET_ROOT
