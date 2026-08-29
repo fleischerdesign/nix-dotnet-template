@@ -9,11 +9,28 @@ pkgs.writeShellScriptBin "dotnet" ''
   REAL_DOTNET="${dotnetSdk}/bin/dotnet"
 
   if [ "$1" = "run" ] && [ "${toString enableWindows}" = "1" ]; then
-    # Function to check if a csproj targets Windows Desktop (WinExe, WPF, WinForms, net*-windows)
+    # Function to check if a csproj targets a runnable Windows Desktop app (WinExe, WPF/WinForms Exe)
     is_winexe() {
       local file="$1"
       [ -f "$file" ] || return 1
-      grep -iqE "<OutputType>\s*WinExe\s*</OutputType>|<UseWPF>\s*true\s*</UseWPF>|<UseWindowsForms>\s*true\s*</UseWindowsForms>|<TargetFramework.*-windows.*>" "$file"
+
+      # Exclude test projects and class libraries
+      case "$file" in
+        *.Tests.csproj|*.Test.csproj|*.UnitTests.csproj) return 1 ;;
+      esac
+      grep -iqE "<IsTestProject>\s*true\s*</IsTestProject>" "$file" && return 1
+      grep -iqE "<OutputType>\s*Library\s*</OutputType>" "$file" && return 1
+
+      # Must explicitly be a WinExe or an Exe with WPF/WinForms enabled
+      if grep -iqE "<OutputType>\s*WinExe\s*</OutputType>" "$file"; then
+        return 0
+      fi
+
+      if grep -iqE "<OutputType>\s*Exe\s*</OutputType>" "$file" && grep -iqE "<UseWPF>\s*true\s*</UseWPF>|<UseWindowsForms>\s*true\s*</UseWindowsForms>" "$file"; then
+        return 0
+      fi
+
+      return 1
     }
 
     PROJECT_ARG=""
@@ -57,21 +74,21 @@ pkgs.writeShellScriptBin "dotnet" ''
     if [ -n "$PROJECT_ARG" ] && [ -f "$PROJECT_ARG" ]; then
       APP_CS="$PROJECT_ARG"
     elif [ -n "$PROJECT_ARG" ] && [ -d "$PROJECT_ARG" ]; then
-      APP_CS=$(find "$PROJECT_ARG" -maxdepth 1 -name "*.csproj" | head -n 1)
+      APP_CS=$(find "$PROJECT_ARG" -maxdepth 2 -name "*.csproj" | head -n 1)
     else
       # Check current directory first
       LOCAL_CS=$(find . -maxdepth 1 -name "*.csproj" | head -n 1)
       if [ -n "$LOCAL_CS" ] && is_winexe "$LOCAL_CS"; then
         APP_CS="$LOCAL_CS"
       else
-        # Search repository root for any WinExe project
+        # Search repository root for any runnable WinExe project (excluding tests/ and bin/ directories)
         REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")"
         while IFS= read -r candidate; do
           if is_winexe "$candidate"; then
             APP_CS="$candidate"
             break
           fi
-        done < <(grep -rlE "WinExe|UseWPF|UseWindowsForms|-windows" --include="*.csproj" --exclude-dir={bin,obj,.direnv,.git} "$REPO_ROOT" 2>/dev/null)
+        done < <(grep -rlE "<OutputType>\s*WinExe\s*</OutputType>|<UseWPF>\s*true\s*</UseWPF>|<UseWindowsForms>\s*true\s*</UseWindowsForms>" --include="*.csproj" --exclude-dir={bin,obj,.direnv,.git,tests,Test,Tests} "$REPO_ROOT" 2>/dev/null)
       fi
     fi
 
