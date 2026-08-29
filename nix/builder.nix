@@ -7,7 +7,7 @@
       sdks ? [ "sdk_10_0" ],
       sdkVersion ? null,
 
-      # Enable Windows Desktop app support (WPF / WinForms via Roslyn + Wine + DXVK)
+      # Enable Windows Desktop app support (WPF / WinForms via Roslyn + Wine)
       enableWindows ? false,
 
       # Enable native Linux GUI support (AvaloniaUI, Uno Platform, Raylib, SkiaSharp)
@@ -53,7 +53,7 @@
         wine = wineEnv.wine;
       };
 
-      # Common Linux GUI libraries for native desktop frameworks (Avalonia, Uno, SkiaSharp, Vulkan, etc.)
+      # Common Linux GUI libraries for native desktop frameworks (Avalonia, Uno, SkiaSharp, etc.)
       guiLibs = with pkgs; [
         libx11
         libxcursor
@@ -68,7 +68,6 @@
         glib
         gtk3
         libglvnd
-        vulkan-loader
         icu
         zlib
         openssl
@@ -83,11 +82,7 @@
         pkgs.netcoredbg
         pkgs.csharpier
         pkgs.nuget
-      ] ++ (if enableWine then [
-        wineEnv.wine
-        pkgs.winetricks
-        pkgs.dxvk
-      ] else [ ]) ++ extraPackages;
+      ] ++ (if enableWine then [ wineEnv.wine ] else [ ]) ++ extraPackages;
 
       baseEnv = {
         DOTNET_ROOT = "${dotnetSdk}";
@@ -107,7 +102,7 @@
           echo -e "\033[1;34m=== .NET Development Environment ===\033[0m"
           echo -e "SDK Package : \033[0;32m${dotnetSdk.name}\033[0m"
           echo -e "Tools       : \033[0;36mcsharp-ls, netcoredbg, csharpier, nuget\033[0m"
-          ${if enableNativeGui && isLinux then ''echo -e "Native GUI  : \033[0;32mEnabled (X11/Vulkan/GL/Fontconfig library paths configured)\033[0m"'' else ""}
+          ${if enableNativeGui && isLinux then ''echo -e "Native GUI  : \033[0;32mEnabled (X11/GL/Fontconfig library paths configured)\033[0m"'' else ""}
           ${if enableWine then wineEnv.shellHook else if enableWindows then ''echo -e "\033[0;33m[Windows / Wine] Windows targeting enabled, but Wine is only supported on Linux.\033[0m"'' else ""}
           ${extraShellHook}
         '';
