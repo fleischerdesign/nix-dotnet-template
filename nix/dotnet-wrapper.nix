@@ -9,27 +9,86 @@ pkgs.writeShellScriptBin "dotnet" ''
   REAL_DOTNET="${dotnetSdk}/bin/dotnet"
 
   if [ "$1" = "run" ] && [ "${toString enableWindows}" = "1" ]; then
-    # Locate the runnable desktop app project: the WinExe project (test projects are libraries).
-    # This is layout-agnostic and works whether the project sits at the repo root or under src/.
-    APP_CS=$(grep -rl "WinExe" --include="*.csproj" --exclude-dir={bin,obj,.direnv} . 2>/dev/null | head -n 1)
+    # Function to check if a csproj targets Windows Desktop (WinExe, WPF, WinForms, net*-windows)
+    is_winexe() {
+      local file="$1"
+      [ -f "$file" ] || return 1
+      grep -iqE "<OutputType>\s*WinExe\s*</OutputType>|<UseWPF>\s*true\s*</UseWPF>|<UseWindowsForms>\s*true\s*</UseWindowsForms>|<TargetFramework.*-windows.*>" "$file"
+    }
 
-    if [ -n "$APP_CS" ]; then
-      echo -e "\033[1;33m[NixOS Windows-Desktop] Publishing $APP_CS (self-contained win-x64) via Linux .NET 10 SDK...\033[0m"
-      $REAL_DOTNET publish "$APP_CS" -r win-x64 --self-contained true -p:EnableWindowsTargeting=true "''${@:2}" || exit $?
+    PROJECT_ARG=""
+    APP_ARGS=()
+    RUN_FLAGS=()
+    IS_APP_ARG=0
 
-      # Resolve the assembly name: an explicit <AssemblyName> or the project file name. Matching
-      # by name avoids picking helper executables (e.g. createdump.exe) from the publish output.
+    shift # Consume "run"
+
+    while [ $# -gt 0 ]; do
+      if [ "$IS_APP_ARG" -eq 1 ]; then
+        APP_ARGS+=("$1")
+        shift
+        continue
+      fi
+
+      case "$1" in
+        --)
+          IS_APP_ARG=1
+          shift
+          ;;
+        --project|-p)
+          PROJECT_ARG="$2"
+          RUN_FLAGS+=("$1" "$2")
+          shift 2
+          ;;
+        --project=*)
+          PROJECT_ARG="''${1#*=}"
+          RUN_FLAGS+=("$1")
+          shift
+          ;;
+        *)
+          RUN_FLAGS+=("$1")
+          shift
+          ;;
+      esac
+    done
+
+    APP_CS=""
+
+    if [ -n "$PROJECT_ARG" ] && [ -f "$PROJECT_ARG" ]; then
+      APP_CS="$PROJECT_ARG"
+    elif [ -n "$PROJECT_ARG" ] && [ -d "$PROJECT_ARG" ]; then
+      APP_CS=$(find "$PROJECT_ARG" -maxdepth 1 -name "*.csproj" | head -n 1)
+    else
+      # Check current directory first
+      LOCAL_CS=$(find . -maxdepth 1 -name "*.csproj" | head -n 1)
+      if [ -n "$LOCAL_CS" ] && is_winexe "$LOCAL_CS"; then
+        APP_CS="$LOCAL_CS"
+      else
+        # Search repository root for any WinExe project
+        REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")"
+        while IFS= read -r candidate; do
+          if is_winexe "$candidate"; then
+            APP_CS="$candidate"
+            break
+          fi
+        done < <(grep -rlE "WinExe|UseWPF|UseWindowsForms|-windows" --include="*.csproj" --exclude-dir={bin,obj,.direnv,.git} "$REPO_ROOT" 2>/dev/null)
+      fi
+    fi
+
+    if [ -n "$APP_CS" ] && is_winexe "$APP_CS"; then
+      echo -e "\033[1;33m[NixOS Windows-Desktop] Publishing $APP_CS (self-contained win-x64) via Linux .NET SDK...\033[0m"
+      $REAL_DOTNET publish "$APP_CS" -r win-x64 --self-contained true -p:EnableWindowsTargeting=true "''${RUN_FLAGS[@]}" || exit $?
+
       APP_NAME=$(basename "$APP_CS" .csproj)
-      ASM_NAME=$(sed -n 's:.*<AssemblyName>\([^<]*\)</AssemblyName>.*:\1:p' "$APP_CS" 2>/dev/null | head -n 1)
+      ASM_NAME=$(sed -n 's:.*<AssemblyName>\([^<]*\)</AssemblyName>.*:\1:p' "$APP_CS" 2>/dev/null | head -n 1 | tr -d '\r ')
       if [ -n "$ASM_NAME" ]; then
         APP_NAME="$ASM_NAME"
       fi
 
-      # Prefer the self-contained publish output (bundles the .NET runtime), then any app exe.
-      # This avoids launching a framework-dependent Debug build that would need a runtime.
-      EXE_PATH=$(find "$(dirname "$APP_CS")/bin" -type f -path "*/publish/$APP_NAME.exe" 2>/dev/null | head -n 1)
+      CS_DIR=$(dirname "$APP_CS")
+      EXE_PATH=$(find "$CS_DIR/bin" -type f -path "*/publish/$APP_NAME.exe" 2>/dev/null | head -n 1)
       if [ -z "$EXE_PATH" ]; then
-        EXE_PATH=$(find "$(dirname "$APP_CS")/bin" -type f -name "$APP_NAME.exe" 2>/dev/null | head -n 1)
+        EXE_PATH=$(find "$CS_DIR/bin" -type f -name "$APP_NAME.exe" 2>/dev/null | head -n 1)
       fi
 
       if [ -z "$EXE_PATH" ]; then
@@ -37,16 +96,20 @@ pkgs.writeShellScriptBin "dotnet" ''
         exit 1
       fi
 
-      echo -e "\033[1;32m[NixOS Windows] Launching $EXE_PATH via Wine...\033[0m"
-      export WINEPREFIX="''${WINEPREFIX:-$PWD/.direnv/wine}"
+      REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")"
+      export WINEPREFIX="''${WINEPREFIX:-$REPO_ROOT/.direnv/wine}"
       export WINEDEBUG="-all"
       unset DOTNET_ROOT
       mkdir -p "$WINEPREFIX"
-      exec ${wine}/bin/wine "$EXE_PATH"
+
+      echo -e "\033[1;32m[NixOS Windows] Launching $EXE_PATH via Wine...\033[0m"
+      exec ${wine}/bin/wine "$EXE_PATH" "''${APP_ARGS[@]}"
     fi
-    # No WinExe app project found -> fall through to the native dotnet run below.
+
+    # Fall back to native dotnet run if not a WinExe project
+    exec $REAL_DOTNET run "''${RUN_FLAGS[@]}" ''${IS_APP_ARG:+--} "''${APP_ARGS[@]}"
   fi
 
-  # Native Linux CLI for everything else, including non-Windows projects running in this shell.
+  # Native Linux CLI for everything else
   exec $REAL_DOTNET "$@"
 ''

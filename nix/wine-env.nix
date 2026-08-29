@@ -1,13 +1,14 @@
 { pkgs }:
 
 let
-  wine = pkgs.wine64;
+  wine = if pkgs.stdenv.isLinux then pkgs.wine64 else pkgs.wine;
 in
 {
   inherit wine;
   shellHook = ''
     # Setup isolated Wine environment for native Windows (WPF/WinForms) execution on NixOS
-    export WINEPREFIX="$PWD/.direnv/wine"
+    REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")"
+    export WINEPREFIX="''${WINEPREFIX:-$REPO_ROOT/.direnv/wine}"
     export WINEDEBUG="-all"
     export WINEARCH="win64"
     mkdir -p "$WINEPREFIX"

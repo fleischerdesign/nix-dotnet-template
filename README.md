@@ -1,17 +1,22 @@
 # .NET Flake Template
 
-A reproducible, modern .NET 10 development environment with native Windows (WPF, WinForms) support on NixOS.
+A reproducible, modern, and truly agnostic .NET development environment for NixOS and Linux with native cross-platform GUI support (Avalonia, Uno Platform) and transparent Windows Desktop (WPF, WinForms) execution via Wine.
 
 ## Features
 
-- **.NET 10 SDK & Tooling**: Pre-configured with `.NET 10`, `csharp-ls` (Roslyn LSP), `netcoredbg`, `csharpier`, and `nuget`.
-- **NixOS Native Windows Support (`devShells.windows`)**: Transparently builds Windows apps (`net10.0-windows`, WPF, WinForms) on Linux via Roslyn and launches the GUI app automatically in an isolated Wine environment (`.direnv/wine`).
-- **Transparent `dotnet` CLI**: No proprietary aliases to learn. Standard commands (`dotnet build`, `dotnet run`, `dotnet test`) work as expected out-of-the-box.
-- **SOLID & DRY Design**: Clean separation of Flake declarations, modular environment building, transparent CLI wrapping, and Wine sandbox management.
+- **.NET SDK & Tooling**: Pre-configured with `.NET 10` (customizable/multi-targetable), `csharp-ls` (Roslyn LSP), `netcoredbg`, `csharpier`, and `nuget`.
+- **Multi-SDK & Multi-Targeting Support**: Easily bundle multiple .NET SDK versions (e.g. .NET 8, 9, 10) in a single shell.
+- **Native Cross-Platform GUI (`enableNativeGui`)**: Configures all required Linux X11, OpenGL, GTK, Fontconfig, ICU, and graphics libraries so frameworks like AvaloniaUI, Uno Platform, Raylib, and SkiaSharp run natively on NixOS out-of-the-box.
+- **NixOS Native Windows Support (`devShells.windows` / `enableWindows`)**: Transparently builds Windows Desktop apps (`WPF`, `WinForms`, `net*-windows`) on Linux via Roslyn and launches the GUI app automatically in an isolated Wine sandbox (`.direnv/wine`).
+- **Transparent & Robust `dotnet` CLI Wrapper**:
+  - Supports `--project <path>` and `-p <path>` arguments.
+  - Correctly separates publish build flags from application runtime arguments (`dotnet run -- arg1 arg2`).
+  - Automatically falls back to native Linux execution for non-Windows projects.
+- **SOLID & DRY Architecture**: Modular Nix design separating Flake entrypoint, devshell builder, CLI wrapper, and Wine environment manager.
 
 ## Usage
 
-### 1. Cross-Platform .NET Development (Web APIs, Microservices, Console)
+### 1. Cross-Platform .NET Development (Web APIs, Console, AvaloniaUI, Microservices)
 
 ```bash
 # Initialize a new standard .NET project
@@ -38,16 +43,45 @@ nix develop .#windows
 dotnet run
 ```
 
+## Customizing Your DevShell
+
+In your custom `flake.nix`, you can leverage `builder.mkDotnetShell` with flexible options:
+
+```nix
+devShells.default = builder.mkDotnetShell {
+  # Accept string ("sdk_10_0"), package (pkgs.dotnetCorePackages.sdk_10_0), or list of multiple SDKs:
+  sdks = [ "sdk_8_0" "sdk_10_0" ];
+
+  # Enable native Linux GUI support (X11, GL, GTK, Fontconfig, ICU) for Avalonia/Uno
+  enableNativeGui = true;
+
+  # Enable transparent Windows Desktop runner via Wine
+  enableWindows = false;
+
+  # Additional CLI tools
+  extraPackages = with pkgs; [ azure-cli docker ];
+
+  # Additional environment variables
+  extraEnv = {
+    ASPNETCORE_ENVIRONMENT = "Development";
+  };
+};
+```
+
 ## Structure
 
 ```
 nix-dotnet-template/
 ├── flake.nix             # Flake entrypoint exposing default and windows devShells
 ├── nix/
-│   ├── builder.nix       # DRY devShell constructor
-│   ├── dotnet-wrapper.nix# Transparent dotnet CLI wrapper script
+│   ├── builder.nix       # Modular devShell builder (mkDotnetShell)
+│   ├── dotnet-wrapper.nix# Robust, argument-aware dotnet CLI wrapper
 │   └── wine-env.nix      # Isolated Wine prefix manager
 ├── .envrc                # direnv integration
 └── .github/
     └── workflows/        # Reusable GitHub Actions workflow
 ```
+
+## License
+
+MIT / See [LICENSE](./LICENSE)

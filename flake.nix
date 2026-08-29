@@ -1,5 +1,5 @@
 {
-  description = "A reproducible .NET 10 development environment with modern tooling and native Windows (WPF/WinForms) support.";
+  description = "A reproducible .NET development environment with modern tooling, native Linux GUI (Avalonia/Uno), and native Windows (WPF/WinForms) support.";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
@@ -16,11 +16,11 @@
       templates = {
         default = {
           path = ./.;
-          description = "A reproducible .NET 10 cross-platform development environment";
+          description = "A reproducible .NET cross-platform development environment (Console, Web APIs, Avalonia, MAUI)";
         };
         windows = {
           path = ./.;
-          description = "A reproducible .NET 10 native Windows (WPF/WinForms) development environment with NixOS Wine runner";
+          description = "A reproducible .NET native Windows (WPF/WinForms) development environment with NixOS Wine runner";
         };
       };
     }
@@ -33,13 +33,15 @@
       {
         devShells = {
           default = builder.mkDotnetShell {
-            sdkVersion = "sdk_10_0";
+            sdks = [ "sdk_10_0" ];
             enableWindows = false;
+            enableNativeGui = true;
           };
 
           windows = builder.mkDotnetShell {
-            sdkVersion = "sdk_10_0";
+            sdks = [ "sdk_10_0" ];
             enableWindows = true;
+            enableNativeGui = true;
           };
         };
 
