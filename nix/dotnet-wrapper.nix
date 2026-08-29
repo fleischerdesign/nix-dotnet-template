@@ -99,10 +99,13 @@ pkgs.writeShellScriptBin "dotnet" ''
       REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")"
       export WINEPREFIX="''${WINEPREFIX:-$REPO_ROOT/.direnv/wine}"
       export WINEDEBUG="-all"
+      export WINEDLLOVERRIDES="mscoree,mshtml="
+      export DXVK_STATE_CACHE_PATH="$WINEPREFIX"
+      export DXVK_LOG_LEVEL="none"
       unset DOTNET_ROOT
       mkdir -p "$WINEPREFIX"
 
-      echo -e "\033[1;32m[NixOS Windows] Launching $EXE_PATH via Wine...\033[0m"
+      echo -e "\033[1;32m[NixOS Windows] Launching $EXE_PATH via Wine (DXVK Vulkan graphics)...\033[0m"
       exec ${wine}/bin/wine "$EXE_PATH" "''${APP_ARGS[@]}"
     fi
 
