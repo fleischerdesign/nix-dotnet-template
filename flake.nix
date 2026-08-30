@@ -12,7 +12,41 @@
       nixpkgs,
       flake-utils,
     }:
+    let
+      # Granular builder helper for consumer flakes (Way A)
+      mkDotnetShell =
+        {
+          pkgs,
+          sdks ? [ "sdk_10_0" ],
+          enableWindows ? false,
+          enableNativeGui ? true,
+          extraPackages ? [ ],
+          env ? { },
+          shellHook ? "",
+        }:
+        let
+          builder = import ./nix/builder.nix { inherit pkgs; };
+          baseShell = builder.mkDotnetShell {
+            inherit
+              sdks
+              enableWindows
+              enableNativeGui
+              extraPackages
+              ;
+          };
+        in
+        baseShell.overrideAttrs (oldAttrs: {
+          env = oldAttrs.env or { } // env;
+          shellHook = (oldAttrs.shellHook or "") + "\n" + shellHook;
+        });
+    in
     {
+      # Granular Library helper functions for consumer flakes
+      lib = {
+        inherit mkDotnetShell;
+      };
+
+      # Scaffolding templates for 'nix flake init' (Way B)
       templates = {
         default = {
           path = ./.;
@@ -28,23 +62,43 @@
       system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
-        builder = import ./nix/builder.nix { inherit pkgs; };
+        defaultShell = mkDotnetShell {
+          inherit pkgs;
+          sdks = [ "sdk_10_0" ];
+          enableWindows = false;
+          enableNativeGui = true;
+        };
+        windowsShell = mkDotnetShell {
+          inherit pkgs;
+          sdks = [ "sdk_10_0" ];
+          enableWindows = true;
+          enableNativeGui = true;
+        };
       in
       {
+        # Pre-baked devShells
         devShells = {
-          default = builder.mkDotnetShell {
-            sdks = [ "sdk_10_0" ];
-            enableWindows = false;
-            enableNativeGui = true;
-          };
+          default = defaultShell;
+          windows = windowsShell;
+        };
 
-          windows = builder.mkDotnetShell {
-            sdks = [ "sdk_10_0" ];
-            enableWindows = true;
-            enableNativeGui = true;
+        # Automated CI checks for 'nix flake check'
+        checks = {
+          default = defaultShell;
+          windows = windowsShell;
+        };
+
+        # Executable apps for 'nix run'
+        apps = {
+          default = flake-utils.lib.mkApp {
+            drv = pkgs.writeShellScriptBin "dotnet-env-info" ''
+              echo "=== .NET Nix Development Environment ==="
+              ${pkgs.dotnet-sdk_10}/bin/dotnet --info
+            '';
           };
         };
 
+        # Standard Code Formatter
         formatter = pkgs.nixfmt-rfc-style;
       }
     );
