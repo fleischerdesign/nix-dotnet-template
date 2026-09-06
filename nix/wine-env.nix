@@ -11,9 +11,10 @@ in
     export WINEPREFIX="''${WINEPREFIX:-$REPO_ROOT/.direnv/wine}"
     export WINEDEBUG="-all"
     export WINEARCH="win64"
-    mkdir -p "$WINEPREFIX"
-
     echo -e "\033[0;32m[Windows / Wine] Isolated Wine prefix configured at .direnv/wine\033[0m"
     echo -e "\033[0;36m[Windows / Wine] Executing 'dotnet run' in Windows desktop projects automatically launches via Wine.\033[0m"
+
+    # Prevent language servers or tooling from recursively scanning root through Wine dosdevices
+    rm -f "$WINEPREFIX/dosdevices/z:" 2>/dev/null || true
   '';
 }

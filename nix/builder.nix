@@ -32,12 +32,7 @@
         else
           [ "sdk_10_0" ];
 
-      resolveSdk =
-        sdk:
-        if builtins.isString sdk then
-          pkgs.dotnetCorePackages.${sdk}
-        else
-          sdk;
+      resolveSdk = sdk: if builtins.isString sdk then pkgs.dotnetCorePackages.${sdk} else sdk;
 
       resolvedSdks = map resolveSdk rawSdks;
       dotnetSdk = pkgs.dotnetCorePackages.combinePackages resolvedSdks;
@@ -82,28 +77,50 @@
         pkgs.netcoredbg
         pkgs.csharpier
         pkgs.nuget
-      ] ++ (if enableWine then [ wineEnv.wine ] else [ ]) ++ extraPackages;
+      ]
+      ++ (if enableWine then [ wineEnv.wine ] else [ ])
+      ++ extraPackages;
 
       baseEnv = {
         DOTNET_ROOT = "${dotnetSdk}";
         DOTNET_CLI_TELEMETRY_OPTOUT = "1";
         DOTNET_NOLOGO = "1";
         EnableWindowsTargeting = if enableWine then "true" else "false";
-      } // (if enableNativeGui && isLinux then {
-        LD_LIBRARY_PATH = guiLibraryPath;
-      } else { }) // extraEnv;
+      }
+      // (
+        if enableNativeGui && isLinux then
+          {
+            LD_LIBRARY_PATH = guiLibraryPath;
+          }
+        else
+          { }
+      )
+      // extraEnv;
 
     in
     pkgs.mkShell (
-      baseEnv // {
+      baseEnv
+      // {
         packages = basePackages;
 
         shellHook = ''
           echo -e "\033[1;34m=== .NET Development Environment ===\033[0m"
           echo -e "SDK Package : \033[0;32m${dotnetSdk.name}\033[0m"
           echo -e "Tools       : \033[0;36mcsharp-ls, netcoredbg, csharpier, nuget\033[0m"
-          ${if enableNativeGui && isLinux then ''echo -e "Native GUI  : \033[0;32mEnabled (X11/GL/Fontconfig library paths configured)\033[0m"'' else ""}
-          ${if enableWine then wineEnv.shellHook else if enableWindows then ''echo -e "\033[0;33m[Windows / Wine] Windows targeting enabled, but Wine is only supported on Linux.\033[0m"'' else ""}
+          ${
+            if enableNativeGui && isLinux then
+              ''echo -e "Native GUI  : \033[0;32mEnabled (X11/GL/Fontconfig library paths configured)\033[0m"''
+            else
+              ""
+          }
+          ${
+            if enableWine then
+              wineEnv.shellHook
+            else if enableWindows then
+              ''echo -e "\033[0;33m[Windows / Wine] Windows targeting enabled, but Wine is only supported on Linux.\033[0m"''
+            else
+              ""
+          }
           ${extraShellHook}
         '';
       }

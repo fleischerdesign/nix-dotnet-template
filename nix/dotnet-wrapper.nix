@@ -116,6 +116,7 @@ pkgs.writeShellScriptBin "dotnet" ''
       export WINEDEBUG="-all"
       unset DOTNET_ROOT
       mkdir -p "$WINEPREFIX"
+      rm -f "$WINEPREFIX/dosdevices/z:" 2>/dev/null || true
 
       echo -e "\033[1;32m[NixOS Windows] Launching $EXE_PATH via Wine...\033[0m"
       exec ${wine}/bin/wine "$EXE_PATH" "''${APP_ARGS[@]}"
